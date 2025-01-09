@@ -4,13 +4,16 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.restassured.RestAssured;
+import io.restassured.common.mapper.TypeRef;
 import io.restassured.response.Response;
 import net.javacrumbs.jsonunit.core.Option;
+import org.hamcrest.Matcher;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
@@ -19,7 +22,7 @@ import static data.country.GetCountryData.GET_ALL_COUNTRIES;
 import static io.restassured.module.jsv.JsonSchemaValidator.matchesJsonSchemaInClasspath;
 import static net.javacrumbs.jsonunit.JsonMatchers.jsonEquals;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.*;
 
 public class GetCountryTests {
 
@@ -49,7 +52,6 @@ public class GetCountryTests {
         assertThat(response.header("X-Powered-By"), equalTo("Express"));
         //3. Verify Body
         assertThat(response.asString(), jsonEquals(GET_ALL_COUNTRIES).when(Option.IGNORING_ARRAY_ORDER));
-        System.out.println(response.asString());
     }
 
     static Stream<Map<String, String>> countryProvider() throws JsonProcessingException {
@@ -71,6 +73,44 @@ public class GetCountryTests {
         assertThat(response.header("X-Powered-By"), equalTo("Express"));
         //3. Verify Body
         assertThat(response.asString(), jsonEquals(country));
-        System.out.println(response.asString());
+    }
+
+    static Stream<?> verifyGetCountriesWithFilter() {
+        List<Map<String, String>> data = new ArrayList<>();
+        data.add(Map.of("gdp", "1868", "operator", ">"));
+        data.add(Map.of("gdp", "1868", "operator", "<"));
+        data.add(Map.of("gdp", "1868", "operator", ">="));
+        data.add(Map.of("gdp", "1868", "operator", "<="));
+        data.add(Map.of("gdp", "1868", "operator", "=="));
+        data.add(Map.of("gdp", "1868", "operator", "!="));
+        return data.stream();
+    }
+
+    @ParameterizedTest
+    @MethodSource("verifyGetCountriesWithFilter")
+    void verifyGetCountriesWithFilter(Map<String, String> queryParams) {
+        Response response = RestAssured.given().log().all()
+                .queryParams(queryParams)
+                .get("/api/v3/countries");
+        //1. Verify Status code
+        assertThat(response.statusCode(), equalTo(200));
+        //2. Verify Header if needs
+        assertThat(response.header("Content-Type"), equalTo("application/json; charset=utf-8"));
+        assertThat(response.header("X-Powered-By"), equalTo("Express"));
+        //3. Verify Body
+        List<Map<String, String>> countries = response.as(new TypeRef<List<Map<String, String>>>() {
+        });
+        for (Map<String, String> country : countries) {
+            float actualGdp = Float.parseFloat(queryParams.get("gdp"));
+            Matcher<Float> matcher = switch (queryParams.get("operator")) {
+                case ">" -> greaterThan(actualGdp);
+                case "<" -> lessThan(actualGdp);
+                case ">=" -> greaterThanOrEqualTo(actualGdp);
+                case "<=" -> lessThanOrEqualTo(actualGdp);
+                case "==" -> equalTo(actualGdp);
+                default -> not(equalTo(actualGdp));
+            };
+            assertThat(Float.parseFloat(country.get("gdp")), matcher);
+        }
     }
 }
