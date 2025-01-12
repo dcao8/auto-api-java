@@ -1,4 +1,4 @@
-package country;
+package tests.country;
 
 import io.restassured.RestAssured;
 import io.restassured.response.Response;
