@@ -20,6 +20,7 @@ import java.util.Map;
 import java.util.stream.Stream;
 
 import static data.country.GetCountryData.GET_ALL_COUNTRIES;
+import static data.country.GetCountryData.GET_ALL_COUNTRIES_WITH_PRIVATE;
 import static io.restassured.module.jsv.JsonSchemaValidator.matchesJsonSchemaInClasspath;
 import static net.javacrumbs.jsonunit.JsonMatchers.jsonEquals;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -162,5 +163,19 @@ public class GetCountryTests {
                 .queryParam("page", page)
                 .queryParam("size", size)
                 .get("/api/v4/countries");
+    }
+
+    @Test
+    void verifyGetCountriesWithPrivateKey() {
+        Response response = RestAssured.given().log().all()
+                .header("api-key", "private")
+                .get("/api/v5/countries");
+        //1. Verify Status code
+        assertThat(response.statusCode(), equalTo(200));
+        //2. Verify Header if needs
+        assertThat(response.header("Content-Type"), equalTo("application/json; charset=utf-8"));
+        assertThat(response.header("X-Powered-By"), equalTo("Express"));
+        //3. Verify Body
+        assertThat(response.asString(), jsonEquals(GET_ALL_COUNTRIES_WITH_PRIVATE).when(Option.IGNORING_ARRAY_ORDER));
     }
 }
