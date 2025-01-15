@@ -8,6 +8,7 @@ import io.restassured.common.mapper.TypeRef;
 import io.restassured.response.Response;
 import model.country.CountriesPagination;
 import net.javacrumbs.jsonunit.core.Option;
+import org.assertj.core.api.SoftAssertions;
 import org.hamcrest.Matcher;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -27,6 +28,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
 
 public class GetCountryTests {
+    SoftAssertions softAssertions;
 
     @BeforeAll
     static void setUp() {
@@ -46,13 +48,15 @@ public class GetCountryTests {
     void verifyGetCountryApiResponseCorrectData() {
         Response response = RestAssured.given().log().all()
                 .get("/api/v1/countries");
+        softAssertions = new SoftAssertions();
         //1. Verify Status code
-        assertThat(response.statusCode(), equalTo(200));
+        softAssertions.assertThat(response.statusCode()).isEqualTo(200);
         //2. Verify Header if needs
-        assertThat(response.header("Content-Type"), equalTo("application/json; charset=utf-8"));
-        assertThat(response.header("X-Powered-By"), equalTo("Express"));
+        softAssertions.assertThat(response.header("Content-Type")).isEqualTo("application/json; charset=utf-8");
+        softAssertions.assertThat(response.header("X-Powered-By")).isEqualTo("Express");
         //3. Verify Body
-        assertThat(response.asString(), jsonEquals(GET_ALL_COUNTRIES).when(Option.IGNORING_ARRAY_ORDER));
+        softAssertions.assertThat(response.asString()).isEqualTo(jsonEquals(GET_ALL_COUNTRIES).when(Option.IGNORING_ARRAY_ORDER));
+        softAssertions.assertAll();
     }
 
     @Test
@@ -65,17 +69,24 @@ public class GetCountryTests {
     }
 
     @Test
-    void verifyGetCountryWithGdpApiResponseCorrectData() {
+    void verifyGetCountryWithGdpApiResponseCorrectData() throws JsonProcessingException {
         Response response = RestAssured.given().log().all()
                 .get("/api/v2/countries");
+        ObjectMapper mapper = new ObjectMapper();
+        List<Map<String, Object>> expectedData = mapper.readValue(GET_ALL_COUNTRIES_WITH_GDP, new TypeReference<List<Map<String, Object>>>() {
+        });
+        List<Map<String, Object>> responseData = mapper.readValue(response.asString(), new TypeReference<List<Map<String, Object>>>() {
+        });
+        softAssertions = new SoftAssertions();
         //1. Verify Status code
-        assertThat(response.statusCode(), equalTo(200));
+        softAssertions.assertThat(response.statusCode()).isEqualTo(200);
         //2. Verify Header if needs
-        assertThat(response.header("Content-Type"), equalTo("application/json; charset=utf-8"));
-        assertThat(response.header("X-Powered-By"), equalTo("Express"));
+        softAssertions.assertThat(response.header("Content-Type")).isEqualTo("application/json; charset=utf-8");
+        softAssertions.assertThat(response.header("X-Powered-By")).isEqualTo("Express");
         //3. Verify Body
-        assertThat(response.asString(), jsonEquals(GET_ALL_COUNTRIES_WITH_GDP).when(Option.IGNORING_ARRAY_ORDER));
-        System.out.println(response.asString());
+        //softAssertions.assertThat(response.asString()).isEqualTo(jsonEquals(GET_ALL_COUNTRIES_WITH_GDP).when(Option.IGNORING_ARRAY_ORDER));
+        softAssertions.assertThat(responseData).usingRecursiveComparison().ignoringCollectionOrder().isEqualTo(expectedData);
+        softAssertions.assertAll();
     }
 
     static Stream<Map<String, String>> countryProvider() throws JsonProcessingException {
@@ -87,16 +98,22 @@ public class GetCountryTests {
 
     @ParameterizedTest
     @MethodSource("countryProvider")
-    void verifyGetCountryByCodeApiResponseCorrectData(Map<String, String> country) {
+    void verifyGetCountryByCodeApiResponseCorrectData(Map<String, String> country) throws JsonProcessingException {
         Response response = RestAssured.given().log().all()
                 .get("/api/v1/countries/{code}", country.get("code"));
+        ObjectMapper mapper = new ObjectMapper();
+        Map<String, String> responseBody = mapper.readValue(response.asString(), new TypeReference<Map<String, String>>() {
+        });
+        softAssertions = new SoftAssertions();
         //1. Verify Status code
-        assertThat(response.statusCode(), equalTo(200));
+        softAssertions.assertThat(response.statusCode()).isEqualTo(200);
         //2. Verify Header if needs
-        assertThat(response.header("Content-Type"), equalTo("application/json; charset=utf-8"));
-        assertThat(response.header("X-Powered-By"), equalTo("Express"));
+        softAssertions.assertThat(response.header("Content-Type")).isEqualTo("application/json; charset=utf-8");
+        softAssertions.assertThat(response.header("X-Powered-By")).isEqualTo("Express");
         //3. Verify Body
-        assertThat(response.asString(), jsonEquals(country));
+        //softAssertions.assertThat(response.asString()).isEqualTo(jsonEquals(country));
+        softAssertions.assertThat(responseBody).isEqualTo(country);
+        softAssertions.assertAll();
     }
 
     static Stream<?> verifyGetCountriesWithFilter() {
@@ -116,11 +133,12 @@ public class GetCountryTests {
         Response response = RestAssured.given().log().all()
                 .queryParams(queryParams)
                 .get("/api/v3/countries");
+        softAssertions = new SoftAssertions();
         //1. Verify Status code
-        assertThat(response.statusCode(), equalTo(200));
+        softAssertions.assertThat(response.statusCode()).isEqualTo(200);
         //2. Verify Header if needs
-        assertThat(response.header("Content-Type"), equalTo("application/json; charset=utf-8"));
-        assertThat(response.header("X-Powered-By"), equalTo("Express"));
+        softAssertions.assertThat(response.header("Content-Type")).isEqualTo("application/json; charset=utf-8");
+        softAssertions.assertThat(response.header("X-Powered-By")).isEqualTo("Express");
         //3. Verify Body
         List<Map<String, String>> countries = response.as(new TypeRef<List<Map<String, String>>>() {
         });
@@ -136,6 +154,7 @@ public class GetCountryTests {
             };
             assertThat(Float.parseFloat(country.get("gdp")), matcher);
         }
+        softAssertions.assertAll();
     }
 
     @Test
@@ -153,7 +172,8 @@ public class GetCountryTests {
         verifyCountriesResponse(response, countriesSecondPage, size);
 
         //Verify data of both pages are not the same
-        assertThat(countriesSecondPage.getData().containsAll(countriesFirstPage.getData()), is(false));
+        softAssertions = new SoftAssertions();
+        softAssertions.assertThat(countriesSecondPage.getData().containsAll(countriesFirstPage.getData())).isFalse();
 
         //Verify the last page
         int total = countriesFirstPage.getTotal();
@@ -168,16 +188,19 @@ public class GetCountryTests {
         response = getCountries(lastPage, sizeOfLastPage);
         CountriesPagination countriesLastPage = response.as(CountriesPagination.class);
         verifyCountriesResponse(response, countriesLastPage, sizeOfLastPage);
+        softAssertions.assertAll();
     }
 
     private static void verifyCountriesResponse(Response response, CountriesPagination countriesPage, int size) {
+        SoftAssertions softAssertions = new SoftAssertions();
         //1. Verify Status code
-        assertThat(response.statusCode(), equalTo(200));
+        softAssertions.assertThat(response.statusCode()).isEqualTo(200);
         //2. Verify Header if needs
-        assertThat(response.header("Content-Type"), equalTo("application/json; charset=utf-8"));
-        assertThat(response.header("X-Powered-By"), equalTo("Express"));
+        softAssertions.assertThat(response.header("Content-Type")).isEqualTo("application/json; charset=utf-8");
+        softAssertions.assertThat(response.header("X-Powered-By")).isEqualTo("Express");
         //3. Verify Body
-        assertThat(countriesPage.getData().size(), equalTo(size));
+        softAssertions.assertThat(countriesPage.getData().size()).isEqualTo(size);
+        softAssertions.assertAll();
     }
 
     private static Response getCountries(int page, int size) {
@@ -192,12 +215,14 @@ public class GetCountryTests {
         Response response = RestAssured.given().log().all()
                 .header("api-key", "private")
                 .get("/api/v5/countries");
+        softAssertions = new SoftAssertions();
         //1. Verify Status code
-        assertThat(response.statusCode(), equalTo(200));
+        softAssertions.assertThat(response.statusCode()).isEqualTo(200);
         //2. Verify Header if needs
-        assertThat(response.header("Content-Type"), equalTo("application/json; charset=utf-8"));
-        assertThat(response.header("X-Powered-By"), equalTo("Express"));
+        softAssertions.assertThat(response.header("Content-Type")).isEqualTo("application/json; charset=utf-8");
+        softAssertions.assertThat(response.header("X-Powered-By")).isEqualTo("Express");
         //3. Verify Body
-        assertThat(response.asString(), jsonEquals(GET_ALL_COUNTRIES_WITH_PRIVATE).when(Option.IGNORING_ARRAY_ORDER));
+        softAssertions.assertThat(response.asString()).isEqualTo(jsonEquals(GET_ALL_COUNTRIES_WITH_PRIVATE).when(Option.IGNORING_ARRAY_ORDER));
+        softAssertions.assertAll();
     }
 }
