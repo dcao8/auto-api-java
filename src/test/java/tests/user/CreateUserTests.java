@@ -3,6 +3,7 @@ package tests.user;
 import io.restassured.RestAssured;
 import io.restassured.http.ContentType;
 import io.restassured.response.Response;
+import model.login.LoginFailResponse;
 import model.login.LoginRequest;
 import model.login.LoginResponse;
 import model.user.*;
@@ -11,6 +12,8 @@ import org.assertj.core.api.SoftAssertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import utils.LoginUtils;
 import utils.RestAssuredUtils;
 
@@ -22,7 +25,7 @@ import java.util.List;
 import static net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson;
 
 public class CreateUserTests {
-
+    SoftAssertions softAssertions;
     static String token;
     static final String DATE_TIME_FORMAT = "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'";
     static final String HEADER_AUTHORIZATION = "Authorization";
@@ -56,7 +59,7 @@ public class CreateUserTests {
                 .header(HEADER_AUTHORIZATION, token)
                 .body(userRequest)
                 .post(CREATE_USER_API);
-        SoftAssertions softAssertions = new SoftAssertions();
+        softAssertions = new SoftAssertions();
         //1. Verify Status code
         softAssertions.assertThat(response.statusCode()).isEqualTo(200);
         //2. Verify Header if needs
@@ -110,7 +113,7 @@ public class CreateUserTests {
                 .header(HEADER_AUTHORIZATION, token)
                 .body(userRequest)
                 .post(CREATE_USER_API);
-        SoftAssertions softAssertions = new SoftAssertions();
+        softAssertions = new SoftAssertions();
         //1. Verify Status code
         softAssertions.assertThat(response.statusCode()).isEqualTo(200);
         //2. Verify Header if needs
@@ -120,6 +123,61 @@ public class CreateUserTests {
         CreateUserResponse createUserResponse = response.as(CreateUserResponse.class);
         softAssertions.assertThat(StringUtils.isNoneBlank(createUserResponse.getId())).isTrue();
         softAssertions.assertThat(createUserResponse.getMessage()).isEqualTo("Customer created");
+        softAssertions.assertAll();
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "/firstName, '',must NOT have fewer than 1 characters",
+            "/lastName, '',must NOT have fewer than 1 characters",
+            "/middleName, '',must NOT have fewer than 1 characters",
+            "/birthday, '',must match pattern \"^\\d{2}-\\d{2}-\\d{4}$\"",
+            "/email, '',must match format \"email\"",
+            "/phone, '',must match pattern \"^\\d{10,11}$\"",
+            "/addresses/0/streetNumber, '',must NOT have fewer than 1 characters",
+            "/addresses/0/street, '',must NOT have fewer than 1 characters",
+            "/addresses/0/ward, '',must NOT have fewer than 1 characters",
+            "/addresses/0/district, '',must NOT have fewer than 1 characters",
+            "/addresses/0/city, '',must NOT have fewer than 1 characters",
+            "/addresses/0/state, '',must NOT have fewer than 1 characters",
+            "/addresses/0/zip, '',must match pattern \"^\\d{5}(?:-\\d{4})?$\"",
+            "/addresses/0/country, '',must NOT have fewer than 2 characters",
+    })
+    void checkValidateMessage(String field, String valueInput, String message) {
+        UserRequest userRequest = UserRequest.getDefault();
+        UserAddressRequest userAddressRequest = UserAddressRequest.getDefault();
+        switch (field) {
+            case "/firstName" -> userRequest.setFirstName(valueInput);
+            case "/lastName" -> userRequest.setLastName(valueInput);
+            case "/middleName" -> userRequest.setMiddleName(valueInput);
+            case "/birthday" -> userRequest.setBirthday(valueInput);
+            case "/email" -> userRequest.setEmail(valueInput);
+            case "/phone" -> userRequest.setPhone(valueInput);
+            case "/addresses/0/streetNumber" -> userAddressRequest.setStreetNumber(valueInput);
+            case "/addresses/0/street" -> userAddressRequest.setStreet(valueInput);
+            case "/addresses/0/ward" -> userAddressRequest.setWard(valueInput);
+            case "/addresses/0/district" -> userAddressRequest.setDistrict(valueInput);
+            case "/addresses/0/city" -> userAddressRequest.setCity(valueInput);
+            case "/addresses/0/state" -> userAddressRequest.setState(valueInput);
+            case "/addresses/0/zip" -> userAddressRequest.setZip(valueInput);
+            case "/addresses/0/country" -> userAddressRequest.setCountry(valueInput);
+        }
+        userRequest.setAddresses(List.of(userAddressRequest));
+        Response response = RestAssured.given().log().all()
+                .contentType(ContentType.JSON)
+                .header(HEADER_AUTHORIZATION, token)
+                .body(userRequest)
+                .post(CREATE_USER_API);
+        softAssertions = new SoftAssertions();
+        //1. Verify Status code
+        softAssertions.assertThat(response.statusCode()).isEqualTo(400);
+        //2. Verify Header if needs
+        softAssertions.assertThat(response.header(HEADER_CONTENT_TYPE)).isEqualTo(CONTENT_TYPE);
+        softAssertions.assertThat(response.header(HEADER_POWER_BY)).isEqualTo(POWER_BY);
+        //3. Verify Body
+        CreateUserFailResponse createUserFailResponse = response.as(CreateUserFailResponse.class);
+        softAssertions.assertThat(createUserFailResponse.getField()).isEqualTo(field);
+        softAssertions.assertThat(createUserFailResponse.getMessage()).isEqualTo(message);
         softAssertions.assertAll();
     }
 }
