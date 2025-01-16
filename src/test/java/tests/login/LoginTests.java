@@ -22,6 +22,7 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.is;
 
 public class LoginTests {
+    SoftAssertions softAssertions;
 
     @BeforeAll
     static void setUp() {
@@ -35,15 +36,17 @@ public class LoginTests {
                 .contentType(ContentType.JSON)
                 .body(loginRequest)
                 .post("/api/login");
+        softAssertions = new SoftAssertions();
         //1. Verify Status code
-        assertThat(response.statusCode(), equalTo(200));
+        softAssertions.assertThat(response.statusCode()).isEqualTo(200);
         //2. Verify Header if needs
-        assertThat(response.header("Content-Type"), equalTo("application/json; charset=utf-8"));
-        assertThat(response.header("X-Powered-By"), equalTo("Express"));
+        softAssertions.assertThat(response.header("Content-Type")).isEqualTo("application/json; charset=utf-8");
+        softAssertions.assertThat(response.header("X-Powered-By")).isEqualTo("Express");
         //3. Verify Body
         LoginResponse loginResponse = response.as(LoginResponse.class);
-        assertThat(StringUtils.isNoneBlank(loginResponse.getToken()), is(true));
-        assertThat(loginResponse.getTimeout(), equalTo("120000"));
+        softAssertions.assertThat(StringUtils.isNoneBlank(loginResponse.getToken())).isTrue();
+        softAssertions.assertThat(loginResponse.getTimeout()).isEqualTo("120000");
+        softAssertions.assertAll();
     }
 
     @ParameterizedTest
@@ -61,7 +64,7 @@ public class LoginTests {
                 .contentType(ContentType.JSON)
                 .body(loginRequest)
                 .post("/api/login");
-        SoftAssertions softAssertions = new SoftAssertions();
+        softAssertions = new SoftAssertions();
         //1. Verify Status code
         softAssertions.assertThat(response.statusCode()).isEqualTo(401);
         //2. Verify Header if needs
