@@ -1,4 +1,4 @@
-package model.user;
+package model.user.dto;
 
 import lombok.*;
 

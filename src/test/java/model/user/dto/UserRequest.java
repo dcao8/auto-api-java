@@ -1,4 +1,4 @@
-package model.user;
+package model.user.dto;
 
 import lombok.*;
 
@@ -29,5 +29,4 @@ public class UserRequest {
                 .addresses(List.of(UserAddressRequest.getDefault()))
                 .build();
     }
-
 }

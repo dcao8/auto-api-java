@@ -22,6 +22,8 @@ dependencies {
     testAnnotationProcessor 'org.projectlombok:lombok:1.18.36'
     testImplementation 'org.assertj:assertj-core:3.27.2'
     testImplementation 'net.javacrumbs.json-unit:json-unit-assertj:4.1.0'
+    testImplementation "org.hibernate.orm:hibernate-core:6.6.4.Final"
+    testImplementation 'org.postgresql:postgresql:42.7.5'
 }
 
 test {
