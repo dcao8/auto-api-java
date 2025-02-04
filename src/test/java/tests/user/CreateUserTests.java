@@ -3,26 +3,30 @@ package tests.user;
 import io.restassured.RestAssured;
 import io.restassured.http.ContentType;
 import io.restassured.response.Response;
-import model.login.LoginFailResponse;
-import model.login.LoginRequest;
-import model.login.LoginResponse;
-import model.user.*;
+import model.user.dao.CustomerAddressDao;
+import model.user.dao.CustomerDao;
+import model.user.dto.*;
 import org.apache.commons.lang3.StringUtils;
 import org.assertj.core.api.SoftAssertions;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.MethodSource;
+import utils.DbUtils;
 import utils.LoginUtils;
 import utils.RestAssuredUtils;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
+import java.util.stream.Stream;
 
 import static net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson;
+import static org.junit.jupiter.params.provider.Arguments.arguments;
 
 public class CreateUserTests {
     SoftAssertions softAssertions;
@@ -36,6 +40,8 @@ public class CreateUserTests {
     static final String EMAIL_TEMPLATE = "api_%s@api.com";
     static final String CREATE_USER_API = "/api/user";
     static final String GET_USER_API = "/api/user/%s";
+    static final String DELETE_USER_API = "/api/user/%s";
+    static List<String> createdCustomerIds = new ArrayList<>();
 
     @BeforeAll
     static void setUp() {
@@ -47,6 +53,15 @@ public class CreateUserTests {
         token = LoginUtils.getToken();
     }
 
+    @AfterAll
+    static void tearDown() {
+        for (String id : createdCustomerIds) {
+            RestAssured.given().log().all()
+                    .header(HEADER_AUTHORIZATION, token)
+                    .delete(String.format(DELETE_USER_API, id));
+        }
+    }
+
     @Test
     void verifyCreateUserSuccessful() {
         long randomNumber = System.currentTimeMillis();
@@ -54,6 +69,7 @@ public class CreateUserTests {
         UserRequest userRequest = UserRequest.getDefault();
         userRequest.setEmail(randomEmail);
         LocalDateTime timeBeforeCreateUser = LocalDateTime.now(ZoneId.of("Z"));
+        LocalDateTime timeBeforeCreateUserForDb = LocalDateTime.now();
         Response response = RestAssured.given().log().all()
                 .contentType(ContentType.JSON)
                 .header(HEADER_AUTHORIZATION, token)
@@ -67,6 +83,7 @@ public class CreateUserTests {
         softAssertions.assertThat(response.header(HEADER_POWER_BY)).isEqualTo(POWER_BY);
         //3. Verify Body
         CreateUserResponse createUserResponse = response.as(CreateUserResponse.class);
+        createdCustomerIds.add(createUserResponse.getId());
         softAssertions.assertThat(StringUtils.isNoneBlank(createUserResponse.getId())).isTrue();
         softAssertions.assertThat(createUserResponse.getMessage()).isEqualTo("Customer created");
         //4. Double check that user has been stored in system
@@ -82,6 +99,7 @@ public class CreateUserTests {
         softAssertions = new SoftAssertions();
         softAssertions.assertThat(getUserResponse.getId()).isEqualTo(createUserResponse.getId());
         LocalDateTime timeAfterCreateUser = LocalDateTime.now(ZoneId.of("Z"));
+        LocalDateTime timeAfterCreateUserForDb = LocalDateTime.now();
         for (GetUserAddressResponse getUserAddressResponse : getUserResponse.getAddresses()) {
             softAssertions.assertThat(getUserAddressResponse.getCustomerId()).isEqualTo(createUserResponse.getId());
             verifyDateTime(softAssertions, getUserAddressResponse.getCreatedAt(), timeBeforeCreateUser, timeAfterCreateUser);
@@ -90,12 +108,30 @@ public class CreateUserTests {
         verifyDateTime(softAssertions, getUserResponse.getCreatedAt(), timeBeforeCreateUser, timeAfterCreateUser);
         verifyDateTime(softAssertions, getUserResponse.getUpdatedAt(), timeBeforeCreateUser, timeAfterCreateUser);
         softAssertions.assertAll();
+        //5. Verify by access to DB
+        CustomerDao customerDao = DbUtils.getCustomerFormDb(createUserResponse.getId());
+        assertThatJson(customerDao).whenIgnoringPaths("$..id", "$..createdAt", "$..updatedAt", "$..customerId")
+                .isEqualTo(userRequest);
+        softAssertions.assertThat(UUID.fromString(getUserResponse.getId())).isEqualTo(customerDao.getId());
+
+        for (CustomerAddressDao addressDao : customerDao.getAddresses()) {
+            softAssertions.assertThat(addressDao.getCustomerId()).isEqualTo(UUID.fromString(createUserResponse.getId()));
+            verifyDateTimeDb(softAssertions, addressDao.getCreatedAt(), timeBeforeCreateUserForDb, timeAfterCreateUserForDb);
+            verifyDateTimeDb(softAssertions, addressDao.getUpdatedAt(), timeBeforeCreateUserForDb, timeAfterCreateUserForDb);
+        }
+        verifyDateTimeDb(softAssertions, customerDao.getCreatedAt(), timeBeforeCreateUserForDb, timeAfterCreateUserForDb);
+        verifyDateTimeDb(softAssertions, customerDao.getUpdatedAt(), timeBeforeCreateUserForDb, timeAfterCreateUserForDb);
     }
 
     void verifyDateTime(SoftAssertions softAssertions, String targetDateTime, LocalDateTime timeBefore, LocalDateTime timeAfter) {
         LocalDateTime localDateTime = LocalDateTime.parse(targetDateTime, DateTimeFormatter.ofPattern(DATE_TIME_FORMAT));
         softAssertions.assertThat(localDateTime.isAfter(timeBefore)).isTrue();
         softAssertions.assertThat(localDateTime.isBefore(timeAfter)).isTrue();
+    }
+
+    void verifyDateTimeDb(SoftAssertions softAssertions, LocalDateTime targetDateTime, LocalDateTime timeBefore, LocalDateTime timeAfter) {
+        softAssertions.assertThat(targetDateTime.isAfter(timeBefore)).isTrue();
+        softAssertions.assertThat(targetDateTime.isBefore(timeAfter)).isTrue();
     }
 
     @Test
@@ -121,6 +157,7 @@ public class CreateUserTests {
         softAssertions.assertThat(response.header(HEADER_POWER_BY)).isEqualTo(POWER_BY);
         //3. Verify Body
         CreateUserResponse createUserResponse = response.as(CreateUserResponse.class);
+        createdCustomerIds.add(createUserResponse.getId());
         softAssertions.assertThat(StringUtils.isNoneBlank(createUserResponse.getId())).isTrue();
         softAssertions.assertThat(createUserResponse.getMessage()).isEqualTo("Customer created");
         softAssertions.assertAll();
@@ -133,7 +170,7 @@ public class CreateUserTests {
             "/middleName, '',must NOT have fewer than 1 characters",
             "/birthday, '',must match pattern \"^\\d{2}-\\d{2}-\\d{4}$\"",
             "/email, '',must match format \"email\"",
-            "/phone, '',must match pattern \"^\\d{10,11}$\"",
+            "/phone, '','must match pattern \"^\\d{10,11}$\"'",
             "/addresses/0/streetNumber, '',must NOT have fewer than 1 characters",
             "/addresses/0/street, '',must NOT have fewer than 1 characters",
             "/addresses/0/ward, '',must NOT have fewer than 1 characters",
@@ -179,5 +216,37 @@ public class CreateUserTests {
         softAssertions.assertThat(createUserFailResponse.getField()).isEqualTo(field);
         softAssertions.assertThat(createUserFailResponse.getMessage()).isEqualTo(message);
         softAssertions.assertAll();
+    }
+
+    @ParameterizedTest
+    @MethodSource("createUserValidationProvider")
+    void checkValidateMessageV2(UserRequest userRequest, String field, String message) {
+        Response response = RestAssured.given().log().all()
+                .contentType(ContentType.JSON)
+                .header(HEADER_AUTHORIZATION, token)
+                .body(userRequest)
+                .post(CREATE_USER_API);
+        softAssertions = new SoftAssertions();
+        //1. Verify Status code
+        softAssertions.assertThat(response.statusCode()).isEqualTo(400);
+        //2. Verify Header if needs
+        softAssertions.assertThat(response.header(HEADER_CONTENT_TYPE)).isEqualTo(CONTENT_TYPE);
+        softAssertions.assertThat(response.header(HEADER_POWER_BY)).isEqualTo(POWER_BY);
+        //3. Verify Body
+        CreateUserFailResponse createUserFailResponse = response.as(CreateUserFailResponse.class);
+        softAssertions.assertThat(createUserFailResponse.getField()).isEqualTo(field);
+        softAssertions.assertThat(createUserFailResponse.getMessage()).isEqualTo(message);
+        softAssertions.assertAll();
+    }
+
+    static Stream<Arguments> createUserValidationProvider() {
+        List<Arguments> arguments = new ArrayList<>();
+        UserRequest firstNameEmpty = UserRequest.getDefault();
+        firstNameEmpty.setFirstName("");
+        arguments.add(arguments(firstNameEmpty, "/firstName", "must NOT have fewer than 1 characters"));
+        UserRequest lastNameEmpty = UserRequest.getDefault();
+        lastNameEmpty.setLastName("");
+        arguments.add(arguments(lastNameEmpty, "/lastName", "must NOT have fewer than 1 characters"));
+        return arguments.stream();
     }
 }
