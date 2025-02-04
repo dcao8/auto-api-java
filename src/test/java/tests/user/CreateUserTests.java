@@ -8,18 +8,16 @@ import model.user.dao.CustomerDao;
 import model.user.dto.*;
 import org.apache.commons.lang3.StringUtils;
 import org.assertj.core.api.SoftAssertions;
-import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.MethodSource;
+import tests.TestMaster;
 import utils.DbUtils;
-import utils.LoginUtils;
-import utils.RestAssuredUtils;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -31,29 +29,7 @@ import static utils.ConstantUtils.*;
 import static utils.DateTimeUtils.verifyDateTime;
 import static utils.DateTimeUtils.verifyDateTimeDb;
 
-public class CreateUserTests {
-    SoftAssertions softAssertions;
-    static String token;
-    static List<String> createdCustomerIds = new ArrayList<>();
-
-    @BeforeAll
-    static void setUp() {
-        RestAssuredUtils.setUp();
-    }
-
-    @BeforeEach
-    void beforeEach() {
-        token = LoginUtils.getToken();
-    }
-
-    @AfterAll
-    static void tearDown() {
-        for (String id : createdCustomerIds) {
-            RestAssured.given().log().all()
-                    .header(HEADER_AUTHORIZATION, token)
-                    .delete(String.format(DELETE_USER_API, id));
-        }
-    }
+public class CreateUserTests extends TestMaster {
 
     @Test
     void verifyCreateUserSuccessful() {
@@ -100,13 +76,11 @@ public class CreateUserTests {
         }
         verifyDateTime(softAssertions, getUserResponse.getCreatedAt(), timeBeforeCreateUser, timeAfterCreateUser);
         verifyDateTime(softAssertions, getUserResponse.getUpdatedAt(), timeBeforeCreateUser, timeAfterCreateUser);
-        softAssertions.assertAll();
         //5. Verify by access to DB
         CustomerDao customerDao = DbUtils.getCustomerFormDb(createUserResponse.getId());
         assertThatJson(customerDao).whenIgnoringPaths("$..id", "$..createdAt", "$..updatedAt", "$..customerId")
                 .isEqualTo(userRequest);
         softAssertions.assertThat(UUID.fromString(getUserResponse.getId())).isEqualTo(customerDao.getId());
-
         for (CustomerAddressDao addressDao : customerDao.getAddresses()) {
             softAssertions.assertThat(addressDao.getCustomerId()).isEqualTo(UUID.fromString(createUserResponse.getId()));
             verifyDateTimeDb(softAssertions, addressDao.getCreatedAt(), timeBeforeCreateUserForDb, timeAfterCreateUserForDb);
@@ -114,6 +88,7 @@ public class CreateUserTests {
         }
         verifyDateTimeDb(softAssertions, customerDao.getCreatedAt(), timeBeforeCreateUserForDb, timeAfterCreateUserForDb);
         verifyDateTimeDb(softAssertions, customerDao.getUpdatedAt(), timeBeforeCreateUserForDb, timeAfterCreateUserForDb);
+        softAssertions.assertAll();
     }
 
     @Test

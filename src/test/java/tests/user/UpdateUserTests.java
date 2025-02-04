@@ -7,18 +7,12 @@ import model.user.dao.CustomerAddressDao;
 import model.user.dao.CustomerDao;
 import model.user.dto.*;
 import org.assertj.core.api.SoftAssertions;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import tests.TestMaster;
 import utils.DbUtils;
-import utils.LoginUtils;
-import utils.RestAssuredUtils;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.UUID;
 
 import static net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson;
@@ -27,29 +21,7 @@ import static utils.ConstantUtils.*;
 import static utils.DateTimeUtils.verifyDateTime;
 import static utils.DateTimeUtils.verifyDateTimeDb;
 
-public class UpdateUserTests {
-    SoftAssertions softAssertions;
-    static String token;
-    static List<String> createdCustomerIds = new ArrayList<>();
-
-    @BeforeAll
-    static void setUp() {
-        RestAssuredUtils.setUp();
-    }
-
-    @BeforeEach
-    void beforeEach() {
-        token = LoginUtils.getToken();
-    }
-
-    @AfterAll
-    static void tearDown() {
-        for (String id : createdCustomerIds) {
-            RestAssured.given().log().all()
-                    .header(HEADER_AUTHORIZATION, token)
-                    .delete(String.format(DELETE_USER_API, id));
-        }
-    }
+public class UpdateUserTests extends TestMaster {
 
     @Test
     void verifyUpdateUserSuccessful() {
@@ -112,7 +84,6 @@ public class UpdateUserTests {
         assertThatJson(customerDao).whenIgnoringPaths("$..id", "$..createdAt", "$..updatedAt", "$..customerId")
                 .isEqualTo(updateUserRequest);
         softAssertions.assertThat(UUID.fromString(getUserResponse.getId())).isEqualTo(customerDao.getId());
-
         for (CustomerAddressDao addressDao : customerDao.getAddresses()) {
             softAssertions.assertThat(addressDao.getCustomerId()).isEqualTo(UUID.fromString(createUserResponse.getId()));
             verifyDateTimeDb(softAssertions, addressDao.getCreatedAt(), timeBeforeCreateUserForDb, timeAfterCreateUserForDb);
@@ -122,6 +93,4 @@ public class UpdateUserTests {
         verifyDateTimeDb(softAssertions, customerDao.getUpdatedAt(), timeBeforeCreateUserForDb, timeAfterCreateUserForDb);
         softAssertions.assertAll();
     }
-
-
 }
