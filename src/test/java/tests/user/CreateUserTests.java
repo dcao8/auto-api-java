@@ -27,20 +27,13 @@ import java.util.stream.Stream;
 
 import static net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
+import static utils.ConstantUtils.*;
+import static utils.DateTimeUtils.verifyDateTime;
+import static utils.DateTimeUtils.verifyDateTimeDb;
 
 public class CreateUserTests {
     SoftAssertions softAssertions;
     static String token;
-    static final String DATE_TIME_FORMAT = "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'";
-    static final String HEADER_AUTHORIZATION = "Authorization";
-    static final String HEADER_CONTENT_TYPE = "Content-Type";
-    static final String HEADER_POWER_BY = "X-Powered-By";
-    static final String CONTENT_TYPE = "application/json; charset=utf-8";
-    static final String POWER_BY = "Express";
-    static final String EMAIL_TEMPLATE = "api_%s@api.com";
-    static final String CREATE_USER_API = "/api/user";
-    static final String GET_USER_API = "/api/user/%s";
-    static final String DELETE_USER_API = "/api/user/%s";
     static List<String> createdCustomerIds = new ArrayList<>();
 
     @BeforeAll
@@ -121,17 +114,6 @@ public class CreateUserTests {
         }
         verifyDateTimeDb(softAssertions, customerDao.getCreatedAt(), timeBeforeCreateUserForDb, timeAfterCreateUserForDb);
         verifyDateTimeDb(softAssertions, customerDao.getUpdatedAt(), timeBeforeCreateUserForDb, timeAfterCreateUserForDb);
-    }
-
-    void verifyDateTime(SoftAssertions softAssertions, String targetDateTime, LocalDateTime timeBefore, LocalDateTime timeAfter) {
-        LocalDateTime localDateTime = LocalDateTime.parse(targetDateTime, DateTimeFormatter.ofPattern(DATE_TIME_FORMAT));
-        softAssertions.assertThat(localDateTime.isAfter(timeBefore)).isTrue();
-        softAssertions.assertThat(localDateTime.isBefore(timeAfter)).isTrue();
-    }
-
-    void verifyDateTimeDb(SoftAssertions softAssertions, LocalDateTime targetDateTime, LocalDateTime timeBefore, LocalDateTime timeAfter) {
-        softAssertions.assertThat(targetDateTime.isAfter(timeBefore)).isTrue();
-        softAssertions.assertThat(targetDateTime.isBefore(timeAfter)).isTrue();
     }
 
     @Test
