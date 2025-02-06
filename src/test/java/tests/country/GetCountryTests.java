@@ -7,14 +7,11 @@ import io.restassured.RestAssured;
 import io.restassured.common.mapper.TypeRef;
 import io.restassured.response.Response;
 import model.country.CountriesPagination;
-import net.javacrumbs.jsonunit.core.Option;
 import org.assertj.core.api.SoftAssertions;
-import org.hamcrest.Matcher;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
-import utils.RestAssuredUtils;
+import tests.TestMaster;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -23,17 +20,8 @@ import java.util.stream.Stream;
 
 import static data.country.GetCountryData.*;
 import static io.restassured.module.jsv.JsonSchemaValidator.matchesJsonSchemaInClasspath;
-import static net.javacrumbs.jsonunit.JsonMatchers.jsonEquals;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.*;
 
-public class GetCountryTests {
-    SoftAssertions softAssertions;
-
-    @BeforeAll
-    static void setUp() {
-        RestAssuredUtils.setUp();
-    }
+public class GetCountryTests extends TestMaster {
 
     @Test
     void verifyGetCountryApiSchema() {
@@ -45,9 +33,14 @@ public class GetCountryTests {
     }
 
     @Test
-    void verifyGetCountryApiResponseCorrectData() {
+    void verifyGetCountryApiResponseCorrectData() throws JsonProcessingException {
         Response response = RestAssured.given().log().all()
                 .get("/api/v1/countries");
+        ObjectMapper mapper = new ObjectMapper();
+        List<Map<String, Object>> expectedData = mapper.readValue(GET_ALL_COUNTRIES, new TypeReference<List<Map<String, Object>>>() {
+        });
+        List<Map<String, Object>> responseData = mapper.readValue(response.asString(), new TypeReference<List<Map<String, Object>>>() {
+        });
         softAssertions = new SoftAssertions();
         //1. Verify Status code
         softAssertions.assertThat(response.statusCode()).isEqualTo(200);
@@ -55,7 +48,7 @@ public class GetCountryTests {
         softAssertions.assertThat(response.header("Content-Type")).isEqualTo("application/json; charset=utf-8");
         softAssertions.assertThat(response.header("X-Powered-By")).isEqualTo("Express");
         //3. Verify Body
-        softAssertions.assertThat(response.asString()).isEqualTo(jsonEquals(GET_ALL_COUNTRIES).when(Option.IGNORING_ARRAY_ORDER));
+        softAssertions.assertThat(responseData).usingRecursiveComparison().ignoringCollectionOrder().isEqualTo(expectedData);
         softAssertions.assertAll();
     }
 
@@ -144,15 +137,15 @@ public class GetCountryTests {
         });
         for (Map<String, String> country : countries) {
             float actualGdp = Float.parseFloat(queryParams.get("gdp"));
-            Matcher<Float> matcher = switch (queryParams.get("operator")) {
-                case ">" -> greaterThan(actualGdp);
-                case "<" -> lessThan(actualGdp);
-                case ">=" -> greaterThanOrEqualTo(actualGdp);
-                case "<=" -> lessThanOrEqualTo(actualGdp);
-                case "==" -> equalTo(actualGdp);
-                default -> not(equalTo(actualGdp));
-            };
-            assertThat(Float.parseFloat(country.get("gdp")), matcher);
+            float expectedGdp = Float.parseFloat(country.get("gdp"));
+            switch (queryParams.get("operator")) {
+                case ">" -> softAssertions.assertThat(expectedGdp).isGreaterThan(actualGdp);
+                case "<" -> softAssertions.assertThat(expectedGdp).isLessThan(actualGdp);
+                case ">=" -> softAssertions.assertThat(expectedGdp).isGreaterThanOrEqualTo(actualGdp);
+                case "<=" -> softAssertions.assertThat(expectedGdp).isLessThanOrEqualTo(actualGdp);
+                case "==" -> softAssertions.assertThat(expectedGdp).isEqualTo(actualGdp);
+                default -> softAssertions.assertThat(expectedGdp).isNotEqualTo(actualGdp);
+            }
         }
         softAssertions.assertAll();
     }
@@ -211,10 +204,15 @@ public class GetCountryTests {
     }
 
     @Test
-    void verifyGetCountriesWithPrivateKey() {
+    void verifyGetCountriesWithPrivateKey() throws JsonProcessingException {
         Response response = RestAssured.given().log().all()
                 .header("api-key", "private")
                 .get("/api/v5/countries");
+        ObjectMapper mapper = new ObjectMapper();
+        List<Map<String, Object>> expectedData = mapper.readValue(GET_ALL_COUNTRIES_WITH_PRIVATE, new TypeReference<List<Map<String, Object>>>() {
+        });
+        List<Map<String, Object>> responseData = mapper.readValue(response.asString(), new TypeReference<List<Map<String, Object>>>() {
+        });
         softAssertions = new SoftAssertions();
         //1. Verify Status code
         softAssertions.assertThat(response.statusCode()).isEqualTo(200);
@@ -222,7 +220,7 @@ public class GetCountryTests {
         softAssertions.assertThat(response.header("Content-Type")).isEqualTo("application/json; charset=utf-8");
         softAssertions.assertThat(response.header("X-Powered-By")).isEqualTo("Express");
         //3. Verify Body
-        softAssertions.assertThat(response.asString()).isEqualTo(jsonEquals(GET_ALL_COUNTRIES_WITH_PRIVATE).when(Option.IGNORING_ARRAY_ORDER));
+        softAssertions.assertThat(responseData).usingRecursiveComparison().ignoringCollectionOrder().isEqualTo(expectedData);
         softAssertions.assertAll();
     }
 }
