@@ -11,7 +11,7 @@
         "bodyPatterns": [
           {
             "equalToJson": {
-              "id": "fd94a420-445f-4ea0-8bfa-2bf4eec8c982",
+              "id": "${json-unit.any-string}",
               "name": "Doe Jos",
               "cardColor": "Silver",
               "textColor": "Black",
@@ -25,7 +25,7 @@
         "status": 200,
         "jsonBody": {
           "cardNumber": "1111 2222 3333 4444",
-          "cardHolder": "John Cena",
+          "cardHolder": "Doe Jos",
           "expiredDate": "01-02-2025"
         },
         "headers": {
