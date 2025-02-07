@@ -12,4 +12,5 @@ public class ConstantUtils {
     public static final String GET_USER_API = "/api/user/%s";
     public static final String UPDATE_USER_API = "/api/user/%s";
     public static final String DELETE_USER_API = "/api/user/%s";
+    public static final String CREATE_CARD_API = "/api/card";
 }

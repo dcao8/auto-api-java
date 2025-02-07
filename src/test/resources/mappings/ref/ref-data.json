@@ -1,0 +1,85 @@
+{
+  "mappings": [
+    {
+      "request": {
+        "urlPath": "/get-card-info-by-type",
+        "headers": {
+          "api-key": {
+            "equalTo": "a-private-key"
+          }
+        },
+        "method": "GET",
+        "queryParameters": {
+          "type": {
+            "equalTo": "SILVER"
+          }
+        }
+      },
+      "response": {
+        "status": 200,
+        "jsonBody": {
+          "cardColor": "Silver",
+          "textColor": "Black",
+          "material": "Plastic"
+        },
+        "headers": {
+          "Content-Type": "application/json"
+        }
+      }
+    },
+    {
+      "request": {
+        "urlPath": "/get-card-info-by-type",
+        "headers": {
+          "api-key": {
+            "equalTo": "a-private-key"
+          }
+        },
+        "method": "GET",
+        "queryParameters": {
+          "type": {
+            "equalTo": "GOLD"
+          }
+        }
+      },
+      "response": {
+        "status": 200,
+        "jsonBody": {
+          "cardColor": "Coral",
+          "textColor": "White",
+          "material": "Plastic"
+        },
+        "headers": {
+          "Content-Type": "application/json"
+        }
+      }
+    },
+    {
+      "request": {
+        "urlPath": "/get-card-info-by-type",
+        "headers": {
+          "api-key": {
+            "equalTo": "a-private-key"
+          }
+        },
+        "method": "GET",
+        "queryParameters": {
+          "type": {
+            "equalTo": "PLATINUM"
+          }
+        }
+      },
+      "response": {
+        "status": 200,
+        "jsonBody": {
+          "cardColor": "Black",
+          "textColor": "Gray",
+          "material": "Metal"
+        },
+        "headers": {
+          "Content-Type": "application/json"
+        }
+      }
+    }
+  ]
+}
