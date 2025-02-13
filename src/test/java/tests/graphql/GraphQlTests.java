@@ -18,6 +18,7 @@ public class GraphQlTests {
     @BeforeAll
     static void setUp() {
         RestAssured.baseURI = "https://countries.trevorblades.com/";
+        RestAssured.port = 443;
     }
 
     @Test
